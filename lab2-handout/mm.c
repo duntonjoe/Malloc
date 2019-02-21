@@ -8,10 +8,15 @@
 #include "mm.h"
 
 #define ALIGNMENT 16
+#define WSIZE 8
+#define DSIZE 16
+
 
 int
 mm_init (void)
 {
+  if ((heap_listp = mem_sbrk(4*WSIZE)) == (void *)-1)
+	return -1;
   return 0;
 }
 
