@@ -23,8 +23,13 @@ static inline void set (void *ptr, unsigned int val) {
 int
 mm_init (void)
 {
+<<<<<<< HEAD
   if ((heap_listp = mem_sbrk(4*WSIZE)) == (void *)-1)
+	return -1;
   return 0;
+=======
+  ;
+>>>>>>> e1f0bac59e35c4902808f13778482af1b8d68101
 }
 
 void*
