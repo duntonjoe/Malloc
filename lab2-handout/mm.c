@@ -11,6 +11,7 @@
 #define WSIZE 8
 #define DSIZE 16
 
+static void *heap_head;
 
 static inline unsigned int get (void *ptr) {
 	return (*(unsigned int *) ptr);
@@ -23,8 +24,15 @@ static inline void set (void *ptr, unsigned int val) {
 int
 mm_init (void)
 {
-  if ((heap_listp = mem_sbrk(4*WSIZE)) == (void *)-1)
-  return 0;
+  if ((heap_head = mem_sbrk(4*WSIZE)) == (void *)-1)
+  	return -1;
+  set(heap_head, 0);
+  set(heap_head + (1*WSIZE), (unsigned int) 1);		//prologue header
+  set(heap_head + (2*WSIZE), (unsigned int) 2);		//prologue footer
+  set(heap_head + (3*WSIZE), (unsigned int) 3);		//epilogue header
+  heap_head += (2*WSIZE);				//put pointer after prologue footer, where data will go
+
+
 }
 
 void*
