@@ -12,12 +12,23 @@
 #define DSIZE 16
 
 
+static inline unsigned int get (void *ptr) {
+	return (*(unsigned int *) ptr);
+}
+
+static inline void set (void *ptr, unsigned int val) {
+	(*(unsigned int *) ptr) = (val);
+}
+
 int
 mm_init (void)
 {
+<<<<<<< HEAD
   if ((heap_listp = mem_sbrk(4*WSIZE)) == (void *)-1)
-	return -1;
   return 0;
+=======
+  ;
+>>>>>>> e1f0bac59e35c4902808f13778482af1b8d68101
 }
 
 void*
@@ -39,3 +50,4 @@ mm_realloc (void *ptr, uint32_t size)
   fprintf(stderr, "realloc block at %p to %u\n", ptr, size);
   return NULL;
 }
+
