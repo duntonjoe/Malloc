@@ -9,10 +9,18 @@
 
 #define ALIGNMENT 16
 
+static inline unsigned int get (void *ptr) {
+	return (*(unsigned int *) ptr);
+}
+
+static inline void set (void *ptr, unsigned int val) {
+	(*(unsigned int *) ptr) = (val);
+}
+
 int
 mm_init (void)
 {
-  return 0;
+  ;
 }
 
 void*
@@ -34,3 +42,4 @@ mm_realloc (void *ptr, uint32_t size)
   fprintf(stderr, "realloc block at %p to %u\n", ptr, size);
   return NULL;
 }
+
