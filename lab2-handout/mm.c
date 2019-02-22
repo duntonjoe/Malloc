@@ -12,14 +12,56 @@
 #define DSIZE 16
 #define CHUNKSIZE (1<<24)
 
+typedef uint64_t word;
+typedef uint32_t tag;
+typedef uint8_t byte;
+typedef byte* address;
+
 static char *heap_head;
 
-static inline unsigned int get (char *ptr) {
+/*
+ * get and set - read or write a word at an address (ptr)
+*/
+static inline unsigned int get (void *ptr) {
 	return (*(unsigned int *) ptr);
 }
-
-static inline void set (char *ptr, unsigned int val) {
+static inline void set (void *ptr, unsigned int val) {
 	(*(unsigned int *) ptr) = (val);
+}
+
+/* returns HDR address given basePtr */
+static inline tag* header (address bp){
+	return (bp - sizeof(tag))
+}
+/* return true IFF block is allocated */
+static inline bool isAllocated (address targetBlockAddr){
+	return targetBlockAddr & 0x1;
+}
+/* returns size of block (words) */
+static inline uint32_t sizeOf (address targetBlockAddr){
+	return targetBlockAddr & ~0x2;
+}
+/* returns FTR address given basePtr */
+static inline tag* footer (address bp){
+	return (bp + *(bp - sizeof(tag)) - (WSIZE);
+}
+/* gives the basePtr of next block */
+static inline address nextBlock (address bp){
+	return footer(bp) + WSIZE;
+}
+/* gives the basePtr of prev block */
+static inline address prevBlock (address bp){
+	return header(bp) - WSIZE;
+}
+/* basePtr, size, allocated */
+void makeBlock (address bp, uint32_t size, bool allocated){
+	set(bp, (size | allocated));
+	set(footer(bp), (size | allocated));
+}
+/* basePtr — toggles alloced/free */
+void
+toggleBlock (address targetAddr){
+	return targetAddr ^ 0x1;
 }
 
 int
