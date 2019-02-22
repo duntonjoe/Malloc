@@ -10,6 +10,7 @@
 #define ALIGNMENT 16
 #define WSIZE 8
 #define DSIZE 16
+#define CHUNKSIZE (1<<24)
 
 static char *heap_head;
 
@@ -24,14 +25,22 @@ static inline void set (char *ptr, unsigned int val) {
 int
 mm_init (void)
 {
+  //create the initial heap	
   if ((heap_head = mem_sbrk(4*WSIZE)) == (void *)-1)
   	return -1;
   set(heap_head, 0);
   set(heap_head + (1*WSIZE), (unsigned int) 1);		//prologue header
   set(heap_head + (2*WSIZE), (unsigned int) 2);		//prologue footer
   set(heap_head + (3*WSIZE), (unsigned int) 3);		//epilogue header
+
   heap_head += (2*WSIZE);				//put pointer after prologue footer, where data will go
 
+  /*
+   * Extend heap by 1 block of chunksize bytes.
+   * Chunksize is equal to 3 words of space, as this accounts for the overhead of a header and footer word.
+   */
+  if(extendHeap(CHUNKSIZE/WSIZE) == NULL)
+	  return -1;
   return 0;
 }
 
