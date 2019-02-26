@@ -72,7 +72,7 @@ static void *extend_heap(size_t words)
  /* Allocate an even number of words to maintain alignment */
  size = (words % 2) ? (words+1) * WSIZE : words * WSIZE;
  if ((long)(bp = mem_sbrk(size)) == -1)
- return NULL;
+ 	return NULL;
 
  /* Initialize free block header/footer and the epilogue header */
  makeBlock(header(bp) size, 0); /* Free block header */
@@ -160,6 +160,8 @@ mm_malloc (uint32_t size)
  	return bp;
  }
 
+ 
+
  /* No fit found. Get more memory and place the block */
  extendsize = MAX(asize,CHUNKSIZE);
  if ((bp = extend_heap(extendsize/WSIZE)) == NULL)
@@ -184,3 +186,16 @@ mm_realloc (void *ptr, uint32_t size)
   return NULL;
 }
 
+/*
+ *FIND FIT - 
+*/
+void *find_fit(size_t blkSize){
+	for(char *blockPtr = heap_head + (2 * sizeof(tag)); getSize(blockPtr) != 0; blockPtr = nextBlock(blockPtr))
+	{
+		if((!isAllocated(blockPtr)) && (sizeOf(blockPtr) >= blkSize))
+		{
+			return blockPtr	
+		}
+	}
+	return expandHeap(blkSize);
+ }
