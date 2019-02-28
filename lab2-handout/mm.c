@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #include "memlib.h"
 #include "mm.h"
@@ -17,102 +18,108 @@ typedef uint32_t tag;
 typedef uint8_t byte;
 typedef byte* address;
 
-static char *heap_head;
+static address heap_head;
+
+
+static inline address find_fit (uint32_t blkSize);
 
 /*
  * get and set - read or write a word at an address (ptr)
 */
-static inline unsigned int get (void *ptr) {
-	return (*(unsigned int *) ptr);
+static inline tag get (tag *ptr) {
+  return *ptr;
 }
-static inline void set (void *ptr, unsigned int val) {
-	(*(unsigned int *) ptr) = (val);
+static inline void set (tag *ptr, tag val) {
+  *ptr = val;
 }
 
 /* returns HDR address given basePtr */
 static inline tag* header (address bp){
-	return (bp - sizeof(tag))
+  return (tag*)bp - 1;
 }
 /* return true IFF block is allocated */
-static inline bool isAllocated (address targetBlockAddr){
-	return targetBlockAddr & 0x1;
+static inline bool isAllocated (tag* targetBlockAddr){
+  return *targetBlockAddr & 0x1;
 }
 /* returns size of block (words) */
-static inline uint32_t sizeOf (address targetBlockAddr){
-	return targetBlockAddr & ~0x2;
+static inline tag sizeOf (tag* targetBlockAddr){
+  return *targetBlockAddr & (tag)-2;
 }
 /* returns FTR address given basePtr */
 static inline tag* footer (address bp){
-	return (bp + *(bp - sizeof(tag)) - (WSIZE);
+  return (tag*)(bp + WSIZE*sizeOf(header(bp)) - WSIZE);
 }
 /* gives the basePtr of next block */
 static inline address nextBlock (address bp){
-	return footer(bp) + WSIZE;
+  return bp + WSIZE * sizeOf(header(bp));
 }
 /* gives the basePtr of prev block */
 static inline address prevBlock (address bp){
-	return header(bp) - WSIZE;
+  return bp - WSIZE * sizeOf(header(bp)-1);
 }
 /* basePtr, size, allocated */
-void makeBlock (address bp, uint32_t size, bool allocated){
-	set(bp, (size | allocated));
-	set(footer(bp), (size | allocated));
+static inline address makeBlock (address bp, uint32_t size, bool allocated) {
+  *header(bp) = size | allocated;
+  *footer(bp) = size | allocated;
+  return bp;
 }
 /* basePtr — toggles alloced/free */
 void
-toggleBlock (address targetAddr){
-	return targetAddr ^ 0x1;
+toggleBlock (address bp){
+  *header(bp) ^= 1;
+  *footer(bp) ^= 1;
 }
 
-static void *extend_heap(size_t words)
+static inline address coalesce(address bp)
 {
- char *bp;
- size_t size;
+  uint32_t size = sizeOf(header(bp));
+  if (!isAllocated(footer(bp)+1)) {
+    size += sizeOf(header(nextBlock(bp)));
+  }
+  if (!isAllocated(header(bp)-1)) {
+    bp = prevBlock(bp);
+    size += sizeOf(header(bp));
+  }
+  return makeBlock(bp, size, 0);
+}
+
+static inline void *extend_heap(uint32_t words)
+{
+ address bp;
+ uint32_t size;
 
  /* Allocate an even number of words to maintain alignment */
- size = (words % 2) ? (words+1) * WSIZE : words * WSIZE;
- if ((long)(bp = mem_sbrk(size)) == -1)
+ words += (words & 1);
+ size = words * WSIZE;
+ if ((uint64_t)(bp = mem_sbrk((int)size)) == (uint64_t)-1)
  	return NULL;
 
  /* Initialize free block header/footer and the epilogue header */
- makeBlock(header(bp) size, 0); /* Free block header */
- makeBlock(footer(bp), size, 0);  /* Free block footer */
- makeBlock(header(nextBlock(bp)), 0, 1); /* New epilogue header */
+ makeBlock(bp, size, 0); /* Free block header */
+ *header(nextBlock(bp)) = 0 | true;
  
  /* Coalesce if the previous block was free */
  return coalesce(bp);
 }
 
-static void *coalesce(void *bp)
- {
- size_t prev_alloc = isAllocated(footer(prevBlock(bp)));
- size_t next_alloc = isAllocated(header(nextBlock(bp)));
- size_t size = sizeOf(header(bp));
-
- if (prev_alloc && next_alloc) { /* Case 1 */
- return bp;
- }
-
- else if (prev_alloc && !next_alloc) { /* Case 2 */
- size += sizeOf(header(nextBlock(bp)));
- makeBlock(header(bp), size, 0);
- makeBlock(footer(bp) size, 0);
- }
-
- else if (!prev_alloc && next_alloc) { /* Case 3 */
- size += sizeOf(header(prevBlock(bp)));
- makeBlock(footer(bp, size, 0);
- makeBlock(header(prevBlock(bp)), size, 0);
- bp = prevBlock(bp);
- }
-
- else { /* Case 4 */
- size += sizeOf(header(prevBlock(bp))) + sizeOf(footer(nextBlock(bp)));
- makeBlock(header(prevBlock(bp)), size, 0);
- makeBlock(footer(nextBlock(bp)), size, 0);
- bp = prevBlock(bp);
- }
- return bp;
+/*
+ *PLACE - takes in a pointer and size, puts block of that size at the pointer.
+*/
+static inline address place(address bp, size_t asize){
+	address splitBlock = footer(bp);
+	if(sizeOf(bp) == asize){
+		toggleBlock(header(bp));
+		toggleBlock(splitBlock);
+	}
+	else{
+		size_t freeBlockSize = sizeOf(header(bp));
+		set(header(bp), asize);
+		toggleBlock(header(bp));
+		makeBlock(splitBlock, asize, 1);
+		splitBlock += WSIZE;	
+		makeBlock(splitBlock, (freeBlockSize - asize), 0);
+		set(footer(splitBlock), (freeBlockSize - asize));
+	}
 }
 
 int
@@ -121,18 +128,15 @@ mm_init (void)
   //create the initial heap	
   if ((heap_head = mem_sbrk(4*WSIZE)) == (void *)-1)
   	return -1;
-  set(heap_head, 0);
-  set(heap_head + (1*WSIZE), (unsigned int) 1);		//prologue header
-  set(heap_head + (2*WSIZE), (unsigned int) 2);		//prologue footer
-  set(heap_head + (3*WSIZE), (unsigned int) 3);		//epilogue header
 
-  heap_head += (2*WSIZE);				//put pointer after prologue footer, where data will go
-
+  heap_head += DSIZE;
+  *(header(heap_head) - 1) = 0 | true;
+  *header(heap_head) = 0 | true;
   /*
    * Extend heap by 1 block of chunksize bytes.
    * Chunksize is equal to 3 words of space, as this accounts for the overhead of a header and footer word.
    */
-  if(extendHeap(CHUNKSIZE/WSIZE) == NULL)
+  if(extend_heap(CHUNKSIZE/WSIZE) == NULL)
 	  return -1;
   return 0;
 }
@@ -140,9 +144,9 @@ mm_init (void)
 void*
 mm_malloc (uint32_t size)
 {
- size_t asize; /* Adjusted block size */
- size_t extendsize; /* Amount to extend heap if no fit */
- char *bp;
+ uint32_t asize; /* Adjusted block size */
+ uint32_t extendsize; /* Amount to extend heap if no fit */
+ address bp;
 
  /* Ignore spurious requests */
  if (size == 0)
@@ -169,8 +173,8 @@ mm_malloc (uint32_t size)
  place(bp, asize);
  return bp;
 
- //fprintf(stderr, "allocate block of size %u\n", size);
- //return NULL;
+ fprintf(stderr, "allocate block of size %u\n", size);
+ return NULL;
 }
 
 void
@@ -189,8 +193,8 @@ mm_realloc (void *ptr, uint32_t size)
 /*
  *FIND FIT - 
 */
-void *find_fit(size_t blkSize){
-	for(char *blockPtr = heap_head + (2 * sizeof(tag)); getSize(blockPtr) != 0; blockPtr = nextBlock(blockPtr))
+address find_fit (uint32_t blkSize) {
+	for(address blockPtr = heap_head + (2 * sizeof(tag)); getSize(blockPtr) != 0; blockPtr = nextBlock(blockPtr))
 	{
 		if((!isAllocated(blockPtr)) && (sizeOf(blockPtr) >= blkSize))
 		{
@@ -199,3 +203,4 @@ void *find_fit(size_t blkSize){
 	}
 	return expandHeap(blkSize);
  }
+
