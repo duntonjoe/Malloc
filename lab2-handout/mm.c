@@ -59,17 +59,18 @@ static inline address prevBlock (address bp){
 }
 /* basePtr, size, allocated */
 static inline address makeBlock (address bp, uint32_t size, bool allocated) {
+  //printf("\n%d header value", *header(bp));
+  //printf("\n%d footer value", *footer(bp));
+  //fflush(stdout);
   *header(bp) = size | allocated;
   *footer(bp) = size | allocated;
   return bp;
 }
 /* basePtr — toggles alloced/free */
-void
-toggleBlock (address bp){
+static inline void toggleBlock (address bp){
   *header(bp) ^= 1;
   *footer(bp) ^= 1;
 }
-
 static inline address coalesce(address bp)
 {
   uint32_t size = sizeOf(header(bp));
@@ -83,7 +84,7 @@ static inline address coalesce(address bp)
   return makeBlock(bp, size, 0);
 }
 
-static inline void *extend_heap(uint32_t words)
+static inline address extend_heap(uint32_t words)
 {
  address bp;
  uint32_t size;
@@ -95,7 +96,7 @@ static inline void *extend_heap(uint32_t words)
  	return NULL;
 
  /* Initialize free block header/footer and the epilogue header */
- makeBlock(bp, size, 0); /* Free block header */
+ makeBlock(bp, size, 0);  
  *header(nextBlock(bp)) = 0 | true;
  
  /* Coalesce if the previous block was free */
@@ -105,21 +106,19 @@ static inline void *extend_heap(uint32_t words)
 /*
  *PLACE - takes in a pointer and size, puts block of that size at the pointer.
 */
-static inline address place(address bp, size_t asize){
-	address splitBlock = footer(bp);
-	if(sizeOf(bp) == asize){
-		toggleBlock(header(bp));
-		toggleBlock(splitBlock);
+static inline address place(address bp, uint32_t asize){
+	if(sizeOf((tag*) bp) == asize){
+		toggleBlock((address)header(bp));
+		toggleBlock((address)footer(bp));
 	}
 	else{
-		size_t freeBlockSize = sizeOf(header(bp));
-		set(header(bp), asize);
-		toggleBlock(header(bp));
-		makeBlock(splitBlock, asize, 1);
-		splitBlock += WSIZE;	
-		makeBlock(splitBlock, (freeBlockSize - asize), 0);
-		set(footer(splitBlock), (freeBlockSize - asize));
+		uint32_t freeBlockSize = sizeOf(header(bp));
+		*header(bp) = asize | 1;
+		makeBlock((address)footer(bp), asize, 1);
+		makeBlock((address)(footer(bp) + sizeof(tag)), (freeBlockSize - asize), 0);
+		set(footer((address)footer(bp) + sizeof(tag)), (freeBlockSize - asize));
 	}
+	return bp;
 }
 
 int
@@ -136,7 +135,7 @@ mm_init (void)
    * Extend heap by 1 block of chunksize bytes.
    * Chunksize is equal to 3 words of space, as this accounts for the overhead of a header and footer word.
    */
-  if(extend_heap(CHUNKSIZE/WSIZE) == NULL)
+  if(extend_heap(2) == NULL)
 	  return -1;
   return 0;
 }
@@ -164,10 +163,8 @@ mm_malloc (uint32_t size)
  	return bp;
  }
 
- 
-
  /* No fit found. Get more memory and place the block */
- extendsize = MAX(asize,CHUNKSIZE);
+ extendsize = (asize > CHUNKSIZE) ? (asize) : (CHUNKSIZE);
  if ((bp = extend_heap(extendsize/WSIZE)) == NULL)
  	return NULL;
  place(bp, asize);
@@ -194,13 +191,13 @@ mm_realloc (void *ptr, uint32_t size)
  *FIND FIT - 
 */
 address find_fit (uint32_t blkSize) {
-	for(address blockPtr = heap_head + (2 * sizeof(tag)); getSize(blockPtr) != 0; blockPtr = nextBlock(blockPtr))
+	for(address blockPtr = heap_head + (2 * sizeof(tag)); sizeOf((tag*)blockPtr) != 0; blockPtr = nextBlock(blockPtr))
 	{
-		if((!isAllocated(blockPtr)) && (sizeOf(blockPtr) >= blkSize))
+		if((!isAllocated((tag*)blockPtr)) && (sizeOf((tag*)blockPtr) >= blkSize))
 		{
-			return blockPtr	
+			return blockPtr;	
 		}
 	}
-	return expandHeap(blkSize);
+	return extend_heap(blkSize);
  }
 
