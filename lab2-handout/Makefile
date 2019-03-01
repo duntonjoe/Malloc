@@ -1,5 +1,5 @@
 CC := gcc
-CFLAGS := -Wall -Wextra -Wpedantic -Wconversion -Werror -Wno-format-truncation -std=c11 -g
+CFLAGS := -Wall -Wextra -Wpedantic -Wconversion -Werror -Wno-format-truncation -std=c11 -O3
 CPPFLAGS :=
 
 #Part 1
