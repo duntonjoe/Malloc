@@ -59,9 +59,6 @@ static inline address prevBlock (address bp){
 }
 /* basePtr, size, allocated */
 static inline address makeBlock (address bp, uint32_t size, bool allocated) {
-  //printf("\n%d header value", *header(bp));
-  //printf("\n%d footer value", *footer(bp));
-  //fflush(stdout);
   *header(bp) = size | allocated;
   *footer(bp) = size | allocated;
   return bp;
@@ -170,14 +167,19 @@ mm_malloc (uint32_t size)
  place(bp, asize);
  return bp;
 
- fprintf(stderr, "allocate block of size %u\n", size);
- return NULL;
+ //fprintf(stderr, "allocate block of size %u\n", size);
+ //return NULL;
 }
 
 void
 mm_free (void *ptr)
 {
-  fprintf(stderr, "free block at %p\n", ptr);
+  if(isAllocated(header(ptr)))
+  {
+    toggleBlock((address)header(ptr));
+    toggleBlock((address)footer(ptr));
+  }
+  //fprintf(stderr, "free block at %p\n", ptr);
 }
 
 void*
