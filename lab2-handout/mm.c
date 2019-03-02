@@ -191,3 +191,16 @@ mm_realloc (void *ptr, uint32_t size)
   mm_free (ptr);
   return newPtr;
 }
+
+int mm_check(void)
+{
+  for (address blockptr = heap_head; sizeOf(header(blockptr)) != 0; blockptr = nextBlock(blockptr)) {
+    if (!isAllocated(header(blockptr))) {
+      if (!isAllocated(header(nextBlock(blockptr)))) {
+	// If it reaches this point, it's missed a coalesce.
+        return 0;
+      }
+    }      
+  }
+  return 1;
+}
