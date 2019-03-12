@@ -1,0 +1,5 @@
+Added this file for comments/notes that may be important.
+	-JD
+
+Write mm_init to give 2 words, then call our function to grow the heap to whatever the needed size is
+	-JD
