@@ -74,6 +74,8 @@ static inline address* prevPtr (address base){
 static inline address makeBlock (address bp, uint32_t size, bool allocated) {
   *header(bp) = size | allocated;
   *footer(bp) = size | allocated;
+  *(header(bp) + 1) = nextPtr(bp);
+  *(header(bp) + 2) = prevPtr(bp);
   return bp;
 }
 
