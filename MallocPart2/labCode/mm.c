@@ -24,6 +24,15 @@ static address heap_head;
 
 static inline address find_fit (uint32_t blkSize);
 
+static inline void removeBlock(address bp){
+	if(prevPtr(bp)){
+		
+	}
+	else{
+
+	}
+}
+
 /* returns HDR address given basePtr */
 static inline tag* header (address bp){
   return (tag*)bp - 1;
@@ -66,7 +75,7 @@ static inline tag* nextHeader (address base){
 
 /*returns next pointer of a block */
 static inline address* nextPtr (address base){
-	return (address*)base + 1;
+	return (address*)base;
 }
 
 /*returns prev pointer of a block */
@@ -78,8 +87,8 @@ static inline address* prevPtr (address base){
 static inline address makeBlock (address bp, uint32_t size, bool allocated) {
   *header(bp) = (tag) (size + OVERHEAD) | allocated;
   *footer(bp) = (tag) (size + OVERHEAD) | allocated;
-  *((address*)header(bp) + 1) =   *nextPtr(bp);
-  *((address*)header(bp) + 2) =   *prevPtr(bp);
+  *((address*)header(bp) + 1) =   nextBlock(bp);
+  *((address*)header(bp) + 2) =   prevBlock(bp);
   return bp;
 }
 
@@ -92,10 +101,11 @@ static inline void toggleBlock (address bp){
 static inline address coalesce(address bp)
 {
   uint32_t size = sizeOf(header(bp));
-  if (!isAllocated(footer(bp)+1)) {
-    size += sizeOf(footer(bp)+1);
+
+  if (!isAllocated(nextHeader(bp))) {
+    size += sizeOf(nextHeader(bp));
   }
-  if (!isAllocated(header(bp)-1)) {
+  if (!isAllocated(prevFooter(bp))) {
     bp = prevBlock(bp);
     size += sizeOf(header(bp));
   }
