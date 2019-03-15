@@ -1,6 +1,6 @@
 CC := gcc
 CFLAGS := -Wall -Wextra -Wpedantic -Wconversion -Werror -Wno-format-truncation -std=c11 -O3
-CPPFLAGS :=
+CPPFLAGS := -g
 
 #Part 1
 #CPPFLAGS += -DMALLOC_LAB_IMPLICIT

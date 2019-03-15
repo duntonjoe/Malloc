@@ -59,7 +59,7 @@ static inline tag* prevFooter (address base){
 
 /* gives the basePtr of prev block */
 static inline address prevBlock (address bp){
-	return (address) ((prevFooter(bp) - sizeOf(prevFooter(bp))) + WSIZE); 
+	return (address) ((prevFooter(bp) - sizeOf(prevFooter(bp))) + (2 * WSIZE)); 
 }
 
 /*returns the next block's header */
@@ -95,11 +95,11 @@ static inline void toggleBlock (address bp){
 /* removeBlock - removes a block from the free list */
 static inline void removeBlock(address bp){
 	if(prevPtr(bp)){
-		*(prevPtr(bp) - OVERHEAD) = nextBlock(bp);	
+		*((address*)prevBlock(bp) - OVERHEAD) = nextBlock(bp);
 	}
 	else
 		free_list_head = *nextPtr(bp);
-	*(nextPtr(bp) - OVERHEAD) = prevBlock(bp);
+	*((address*)nextBlock(bp) - OVERHEAD) = prevBlock(bp);
 }
 
 /* insertBlock - inserts a block into the free list */
@@ -116,12 +116,12 @@ static inline address coalesce(address bp)
 
   if (!isAllocated(nextHeader(bp))) {
     size += sizeOf(nextHeader(bp));
-    removeBlock(*nextPtr(bp)); 
+    removeBlock(nextBlock(bp));
   }
   if (!isAllocated(prevFooter(bp))) {
     size += sizeOf(header(bp));
     bp = prevBlock(bp);
-    removeBlock(*prevPtr(bp));
+    removeBlock(prevBlock(bp));
   }
   *header(bp) = size | false;
   *footer(bp) = size | false;
@@ -135,7 +135,6 @@ static inline uint32_t blocksFromBytes (uint32_t bytes) {
 
 static inline address extend_heap(uint32_t words)
 {
-  printf("\nentered extend_heap\n");
   words += (words & 1);
   uint32_t size = words * WSIZE;
   address bp = mem_sbrk ((int)size);
@@ -143,10 +142,8 @@ static inline address extend_heap(uint32_t words)
     return NULL;
   /* Initialize free block header/footer and the epilogue header */
   makeBlock (bp, words, false); 
-  printf("\nright after makeBlock call\n"); 
   *header (nextBlock (bp)) = 0 | true;
   /* Coalesce if the previous block was free */
-  printf("\ncalling coalesce\n");
   return coalesce (bp);
 }
 
@@ -189,7 +186,6 @@ mm_init (void)
   heap_head += 2 * WSIZE;
   *(header(heap_head) - 1) = 0 | true;
   *header(heap_head) = 0 | true;
-  printf("\nline 162\n");
   free_list_head = heap_head;	
   extend_heap(4);
   /*
