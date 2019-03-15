@@ -11,6 +11,7 @@
 #define ALIGNMENT 16
 #define WSIZE 8
 #define DSIZE 16
+#define OVERHEAD (2 * sizeof(tag))
 #define CHUNKSIZE (1<<24)
 
 typedef uint64_t word;
@@ -51,6 +52,22 @@ static inline address nextBlock (address bp){
 /* gives the basePtr of prev block */
 static inline address prevBlock (address bp){
   return bp - WSIZE * sizeOf(header(bp)-1);
+}
+
+static inline tag* prevFooter (address base){
+	return header(base) - 1;
+}
+
+static inline tag* nextHeader (address base){
+	return footer(base) + 1;
+}
+
+static inline address* nextPtr (address base){
+	return (address*)base + 1;
+}
+
+static inline address* prevPtr (address base){
+	return (address*)base + 1;
 }
 
 /* basePtr, size, allocated */
@@ -112,6 +129,9 @@ static inline address place(address bp, uint32_t asize)
   return bp;
 }
 
+/*
+ *Find_fit - finds first available spot where a new block could fit
+*/
 static inline address find_fit (uint32_t blkSize) {
   for(address blockPtr = heap_head; sizeOf(header(blockPtr)) != 0; blockPtr = nextBlock(blockPtr))
   {
@@ -127,7 +147,7 @@ int
 mm_init (void)
 {
   //create the initial heap	
-  if ((heap_head = mem_sbrk(2*WSIZE)) == (void *)-1)
+  if ((heap_head = mem_sbrk(4*WSIZE)) == (void *)-1)
   	return -1;
   
   heap_head += 2 * WSIZE;

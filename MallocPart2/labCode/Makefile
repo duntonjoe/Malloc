@@ -3,9 +3,9 @@ CFLAGS := -Wall -Wextra -Wpedantic -Wconversion -Werror -Wno-format-truncation -
 CPPFLAGS :=
 
 #Part 1
-CPPFLAGS += -DMALLOC_LAB_IMPLICIT
+#CPPFLAGS += -DMALLOC_LAB_IMPLICIT
 #Part 2
-#CPPFLAGS += -DMALLOC_LAB_EXPLICIT
+CPPFLAGS += -DMALLOC_LAB_EXPLICIT
 #Part 3
 #CPPFLAGS += -DMALLOC_LAB_SEG
 
