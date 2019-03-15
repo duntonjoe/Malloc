@@ -20,6 +20,7 @@ typedef uint8_t byte;
 typedef byte* address;
 
 static address heap_head;
+static address free_list_head;
 
 
 static inline address find_fit (uint32_t blkSize);
@@ -91,11 +92,22 @@ static inline void toggleBlock (address bp){
   *footer(bp) ^= 1;
 }
 
+/* removeBlock - removes a block from the free list */
 static inline void removeBlock(address bp){
 	if(prevPtr(bp)){
 		*(prevPtr(bp) - OVERHEAD) = nextBlock(bp);	
 	}
+	else
+		free_list_head = *nextPtr(bp);
 	*(nextPtr(bp) - OVERHEAD) = prevBlock(bp);
+}
+
+/* insertBlock - inserts a block into the free list */
+static inline void insertBlock(address bp){
+	*((address*)header(bp) + 1) = free_list_head;
+	*((address*)header(bp) + 1) = NULL;
+	*((address*)header(free_list_head) + 2) = bp;
+	free_list_head = bp;
 }
 
 static inline address coalesce(address bp)
@@ -104,11 +116,16 @@ static inline address coalesce(address bp)
 
   if (!isAllocated(nextHeader(bp))) {
     size += sizeOf(nextHeader(bp));
+    removeBlock(*nextPtr(bp)); 
   }
   if (!isAllocated(prevFooter(bp))) {
-    bp = prevBlock(bp);
     size += sizeOf(header(bp));
+    bp = prevBlock(bp);
+    removeBlock(*prevPtr(bp));
   }
+  *header(bp) = size | false;
+  *footer(bp) = size | false;
+  insertBlock(bp);
   return makeBlock(bp, size, false);
 }
 
@@ -173,6 +190,7 @@ mm_init (void)
   *(header(heap_head) - 1) = 0 | true;
   *header(heap_head) = 0 | true;
   printf("\nline 162\n");
+  free_list_head = heap_head;	
   extend_heap(4);
   /*
    * Extend heap by 1 block of chunksize bytes.
