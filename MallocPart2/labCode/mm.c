@@ -24,14 +24,7 @@ static address heap_head;
 
 static inline address find_fit (uint32_t blkSize);
 
-static inline void removeBlock(address bp){
-	if(prevPtr(bp)){
-		
-	}
-	else{
 
-	}
-}
 
 /* returns HDR address given basePtr */
 static inline tag* header (address bp){
@@ -96,6 +89,13 @@ static inline address makeBlock (address bp, uint32_t size, bool allocated) {
 static inline void toggleBlock (address bp){
   *header(bp) ^= 1;
   *footer(bp) ^= 1;
+}
+
+static inline void removeBlock(address bp){
+	if(prevPtr(bp)){
+		*(prevPtr(bp) - OVERHEAD) = nextBlock(bp);	
+	}
+	*(nextPtr(bp) - OVERHEAD) = prevBlock(bp);
 }
 
 static inline address coalesce(address bp)
