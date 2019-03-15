@@ -189,7 +189,7 @@ static inline address find_fit (uint32_t blkSize) {
 	return extend_heap(blkSize);
 }
 
-	int
+int
 mm_init (void)
 {
 	//create the initial heap	
