@@ -41,7 +41,7 @@ static inline tag sizeOf (tag* targetBlockAddr){
 
 /* returns FTR address given basePtr */
 static inline tag* footer (address bp) {
-  return (tag*)(bp + WSIZE*sizeOf(header(bp)) - WSIZE);
+  return (tag*)(bp + OVERHEAD + WSIZE*sizeOf(header(bp)) - WSIZE);
 }
 
 /* gives the basePtr of next block */
@@ -49,33 +49,37 @@ static inline address nextBlock (address bp){
   return bp + WSIZE * sizeOf(header(bp));
 }
 
-/* gives the basePtr of prev block */
-static inline address prevBlock (address bp){
-  return bp - WSIZE * sizeOf(header(bp)-1);
-}
-
+/*returns the previous block's footer */
 static inline tag* prevFooter (address base){
 	return header(base) - 1;
 }
 
+/* gives the basePtr of prev block */
+static inline address prevBlock (address bp){
+	return (address) ((prevFooter(bp) - sizeOf(prevFooter(bp))) + WSIZE); 
+}
+
+/*returns the next block's header */
 static inline tag* nextHeader (address base){
 	return footer(base) + 1;
 }
 
+/*returns next pointer of a block */
 static inline address* nextPtr (address base){
 	return (address*)base + 1;
 }
 
+/*returns prev pointer of a block */
 static inline address* prevPtr (address base){
 	return (address*)base + 1;
 }
 
 /* basePtr, size, allocated */
 static inline address makeBlock (address bp, uint32_t size, bool allocated) {
-  *header(bp) = size | allocated;
-  *footer(bp) = size | allocated;
-  *(header(bp) + 1) = nextPtr(bp);
-  *(header(bp) + 2) = prevPtr(bp);
+  *header(bp) = (uint32_t) (size + OVERHEAD) | allocated;
+  *footer(bp) = (uint32_t) (size + OVERHEAD) | allocated;
+  *(header(bp) + 1) =  *nextPtr(bp);
+  *(header(bp) + 2) =  *prevPtr(bp);
   return bp;
 }
 
@@ -155,6 +159,7 @@ mm_init (void)
   heap_head += 2 * WSIZE;
   *(header(heap_head) - 1) = 0 | true;
   *header(heap_head) = 0 | true;
+  extend_heap(4);
   /*
    * Extend heap by 1 block of chunksize bytes.
    * Chunksize is equal to 3 words of space, as this accounts for the overhead of a header and footer word.
