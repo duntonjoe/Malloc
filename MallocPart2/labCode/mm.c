@@ -76,10 +76,10 @@ static inline address* prevPtr (address base){
 
 /* basePtr, size, allocated */
 static inline address makeBlock (address bp, uint32_t size, bool allocated) {
-  *header(bp) = (uint32_t) (size + OVERHEAD) | allocated;
-  *footer(bp) = (uint32_t) (size + OVERHEAD) | allocated;
-  *(header(bp) + 1) =  *nextPtr(bp);
-  *(header(bp) + 2) =  *prevPtr(bp);
+  *header(bp) = (tag) (size + OVERHEAD) | allocated;
+  *footer(bp) = (tag) (size + OVERHEAD) | allocated;
+  *((address*)header(bp) + 1) =   *nextPtr(bp);
+  *((address*)header(bp) + 2) =   *prevPtr(bp);
   return bp;
 }
 
@@ -108,15 +108,18 @@ static inline uint32_t blocksFromBytes (uint32_t bytes) {
 
 static inline address extend_heap(uint32_t words)
 {
+  printf("\nentered extend_heap\n");
   words += (words & 1);
   uint32_t size = words * WSIZE;
   address bp = mem_sbrk ((int)size);
   if ((uint64_t)bp == (uint64_t)-1)
     return NULL;
   /* Initialize free block header/footer and the epilogue header */
-  makeBlock (bp, words, false);  
+  makeBlock (bp, words, false); 
+  printf("\nright after makeBlock call\n"); 
   *header (nextBlock (bp)) = 0 | true;
   /* Coalesce if the previous block was free */
+  printf("\ncalling coalesce\n");
   return coalesce (bp);
 }
 
@@ -159,6 +162,7 @@ mm_init (void)
   heap_head += 2 * WSIZE;
   *(header(heap_head) - 1) = 0 | true;
   *header(heap_head) = 0 | true;
+  printf("\nline 162\n");
   extend_heap(4);
   /*
    * Extend heap by 1 block of chunksize bytes.
