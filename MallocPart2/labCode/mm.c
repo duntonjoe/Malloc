@@ -141,7 +141,7 @@ static inline address coalesce(address bp)
  * 		bytes -> represents the number of bytes requested by the application
  */
 static inline uint32_t blocksFromBytes (uint32_t bytes) {
-	u_int32_t blocks = bytes / 8;
+	uint32_t blocks = bytes / 8;
 	if (bytes % 16 == 0 || bytes % 16 > 8){
 		blocks++;
 	}
