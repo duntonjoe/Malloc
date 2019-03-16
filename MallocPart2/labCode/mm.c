@@ -138,9 +138,10 @@ static inline address coalesce(address bp)
 
 /*
  * blocksFromBytes - ensures that all blocks are aligned to 16 bytes 
+ * 		bytes -> represents the number of bytes requested by the application
  */
 static inline uint32_t blocksFromBytes (uint32_t bytes) {
-	return (uint32_t)((bytes + 2 * sizeof(tag) + DSIZE - 1) / DSIZE) * 2;
+	return (uint32_t) (	(OVERHEAD + bytes) + (16 - ((OVERHEAD - bytes) % 16))	);
 }
 
 /*
