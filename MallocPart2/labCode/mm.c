@@ -204,7 +204,7 @@ mm_init (void)
 	if ((heap_head = mem_sbrk(4*WSIZE)) == (void *)-1)
 		return -1;
 
-	//heap_head += 2 * WSIZE;
+	heap_head += 2 * WSIZE;
 	*(header(heap_head) - 1) = 4 | true;
 	*footer(heap_head) = 4 | true;
 	free_list_head = heap_head;
