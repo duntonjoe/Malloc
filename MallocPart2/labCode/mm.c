@@ -204,8 +204,8 @@ mm_init (void)
 		return -1;
 
 	heap_head += 2 * WSIZE;
-	*(header(heap_head) - 1) = 0 | true;
-	*header(heap_head) = 0 | true;
+	*(header(heap_head) - 1) = 4 | true;
+	*footer(heap_head) = 4 | true;
 	free_list_head = heap_head;	
 	/*
 	 * Extend heap by 1 block of chunksize bytes.
