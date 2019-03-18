@@ -201,12 +201,12 @@ int
 mm_init (void)
 {
 	//create the initial heap	
-	if ((heap_head = mem_sbrk(4*WSIZE)) == (void *)-1)
+	if ((heap_head = mem_sbrk(6*WSIZE)) == (void *)-1)
 		return -1;
 
 	heap_head += 2 * WSIZE;
-	*(header(heap_head) - 1) = 4 | true;
-	*footer(heap_head) = 4 | true;
+	makeBlock(heap_head, 4, true);
+	*header(nextBlock(heap_head)) = 0 | 1;
 	free_list_head = heap_head + sizeof(tag);
 	*prevPtr(heap_head) = heap_head;
 	*nextPtr(heap_head) = heap_head;	
