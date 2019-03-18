@@ -86,7 +86,7 @@ static inline address* nextPtr (address base){
 
 /*returns prev pointer of a block */
 static inline address* prevPtr (address base){
-	return (address*)base + WSIZE;
+	return (address*)base + 1;
 }
 
 /*basePtr, size, allocated */
