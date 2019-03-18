@@ -141,11 +141,10 @@ static inline address coalesce(address bp)
  * 		bytes -> represents the number of bytes requested by the application
  */
 static inline uint32_t blocksFromBytes (uint32_t bytes) {
-	uint32_t blocks = bytes / 8;
-	if (bytes % 16 == 0 || bytes % 16 > 8){
-		blocks++;
-	}
-	return blocks;
+	// The remainder of the requested space must be equal to 8 bytes because of the positioning of
+	// the footer and proceding header to reach the next payload
+	uint32_t modulus = bytes % 16;
+	(modulus != 0 && modulus < 9) ? (return (bytes - modulus + 8)) : (return (bytes - modulus + 24));
 }
 
 /*
@@ -205,7 +204,6 @@ mm_init (void)
 	*(header(heap_head) - 1) = 0 | true;
 	*header(heap_head) = 0 | true;
 	free_list_head = heap_head;	
-	extend_heap(4);
 	/*
 	 * Extend heap by 1 block of chunksize bytes.
 	 * Chunksize is equal to 3 words of space, as this accounts for the overhead of a header and footer word.
