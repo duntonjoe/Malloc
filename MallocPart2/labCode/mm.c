@@ -207,7 +207,7 @@ mm_init (void)
 	heap_head += 2 * WSIZE;
 	makeBlock(heap_head, 4, true);
 	*header(nextBlock(heap_head)) = 0 | 1;
-	free_list_head = heap_head + sizeof(tag);
+	free_list_head = heap_head;
 	*prevPtr(heap_head) = heap_head;
 	*nextPtr(heap_head) = heap_head;	
 	/*
