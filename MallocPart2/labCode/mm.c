@@ -175,6 +175,7 @@ static inline address extend_heap(uint32_t words)
 		return NULL;
 	/* Initialize free block header/footer and the epilogue header */
 	makeBlock (bp, words, false); 
+	addNode(bp);
 	*header (nextBlock (bp)) = 0 | true;
 	/* Coalesce if the previous block was free */
 	return coalesce (bp);
@@ -248,6 +249,7 @@ void
 mm_free (void *ptr)
 {
 	toggleBlock((address)ptr);
+	addNode(ptr);
 	coalesce ((address)ptr);
 }
 
