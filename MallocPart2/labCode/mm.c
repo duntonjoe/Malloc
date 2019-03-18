@@ -11,7 +11,7 @@
 #define ALIGNMENT 16
 #define WSIZE 8
 #define DSIZE 16
-#define OVERHEAD (2 * sizeof(tag))
+#define OVERHEAD (2 * sizeof(word))
 #define CHUNKSIZE (1<<24)
 
 typedef uint64_t word;
@@ -81,8 +81,8 @@ static inline address* prevPtr (address base){
 static inline address makeBlock (address bp, uint32_t size, bool allocated) {
 	*header(bp) = (tag) (size + OVERHEAD) | allocated;
 	*footer(bp) = (tag) (size + OVERHEAD) | allocated;
-	*((address*)header(bp) + 1) =   nextBlock(bp);
-	*((address*)header(bp) + 2) =   prevBlock(bp);
+	*((address*)header(bp) + sizeof(tag))         =   nextBlock(bp);
+	*((address*)header(bp) + sizeof(tag) + WSIZE) =   prevBlock(bp);
 	return bp;
 }
 
