@@ -44,7 +44,7 @@ static inline tag sizeOf (tag* targetBlockAddr){
 
 /* returns FTR address given basePtr */
 static inline tag* footer (address bp) {
-	return (tag*)(bp + OVERHEAD + WSIZE*sizeOf(header(bp)) - WSIZE);
+	return (tag*)(bp + WSIZE*sizeOf(header(bp)) - WSIZE);
 }
 
 /* gives the basePtr of next block */
