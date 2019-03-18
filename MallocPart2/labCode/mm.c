@@ -25,7 +25,19 @@ static address free_list_head;
 
 static inline address find_fit (uint32_t blkSize);
 
+static inline void addNode(address p){
+	address prev = free_list_head;
+	address next = *nextPtr(prev);
+	*nextPtr(p) = next;
+	*prevPtr(p) = prev;
+	*prevPtr(next) = p;
+	*nextPtr(prev) = p;
+}
 
+static inline void removeNode (address p){
+	*nextPtr(*prevPtr(p)) = *nextPtr(p);
+	*prevPtr(*nextPtr(p)) = *prevPtr(p);
+}
 
 /* returns HDR address given basePtr */
 static inline tag* header (address bp){
@@ -124,16 +136,16 @@ static inline address coalesce(address bp)
 
 	if (!isAllocated(nextHeader(bp))) {
 		size += sizeOf(nextHeader(bp));
-		removeBlock(nextBlock(bp));
+		removeNode(nextBlock(bp));
 	}
 	if (!isAllocated(prevFooter(bp))) {
 		size += sizeOf(header(bp));
 		bp = prevBlock(bp);
-		removeBlock(prevBlock(bp));
+		removeNode(prevBlock(bp));
 	}
 	*header(bp) = size | false;
 	*footer(bp) = size | false;
-	insertBlock(bp);
+	addNode(bp);
 	return makeBlock(bp, size, false);
 }
 
