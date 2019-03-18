@@ -25,20 +25,6 @@ static address free_list_head;
 
 static inline address find_fit (uint32_t blkSize);
 
-static inline void addNode(address p){
-	address prev = free_list_head;
-	address next = *nextPtr(prev);
-	*nextPtr(p) = next;
-	*prevPtr(p) = prev;
-	*prevPtr(next) = p;
-	*nextPtr(prev) = p;
-}
-
-static inline void removeNode (address p){
-	*nextPtr(*prevPtr(p)) = *nextPtr(p);
-	*prevPtr(*nextPtr(p)) = *prevPtr(p);
-}
-
 /* returns HDR address given basePtr */
 static inline tag* header (address bp){
 	return (tag*)bp - 1;
@@ -87,6 +73,20 @@ static inline address* nextPtr (address base){
 /*returns prev pointer of a block */
 static inline address* prevPtr (address base){
 	return (address*)base + 1;
+}
+
+static inline void addNode(address p){
+	address prev = free_list_head;
+	address next = *nextPtr(prev);
+	*nextPtr(p) = next;
+	*prevPtr(p) = prev;
+	*prevPtr(next) = p;
+	*nextPtr(prev) = p;
+}
+
+static inline void removeNode (address p){
+	*nextPtr(*prevPtr(p)) = *nextPtr(p);
+	*prevPtr(*nextPtr(p)) = *prevPtr(p);
 }
 
 /*basePtr, size, allocated */
