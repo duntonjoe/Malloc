@@ -208,8 +208,8 @@ mm_init (void)
 	*(header(heap_head) - 1) = 4 | true;
 	*footer(heap_head) = 4 | true;
 	free_list_head = heap_head + sizeof(tag);
-	prevPtr(heap_head) = heap_head;
-	nextPtr(heap_head) = heap_head;	
+	*prevPtr(heap_head) = heap_head;
+	*nextPtr(heap_head) = heap_head;	
 	/*
 	 * Extend heap by 1 block of chunksize bytes.
 	 * Chunksize is equal to 3 words of space, as this accounts for the overhead of a header and footer word.
