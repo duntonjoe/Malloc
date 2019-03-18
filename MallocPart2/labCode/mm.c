@@ -74,7 +74,7 @@ static inline address* nextPtr (address base){
 
 /*returns prev pointer of a block */
 static inline address* prevPtr (address base){
-	return (address*)base + 1;
+	return (address*)base + WSIZE;
 }
 
 /*basePtr, size, allocated */
@@ -207,7 +207,7 @@ mm_init (void)
 	heap_head += 2 * WSIZE;
 	*(header(heap_head) - 1) = 4 | true;
 	*footer(heap_head) = 4 | true;
-	free_list_head = heap_head;
+	free_list_head = heap_head + sizeof(tag);
 	prevPtr(heap_head) = heap_head;
 	nextPtr(heap_head) = heap_head;	
 	/*
