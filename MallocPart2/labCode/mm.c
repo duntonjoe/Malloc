@@ -147,7 +147,7 @@ static inline uint32_t blocksFromBytes (uint32_t bytes) {
 	if(modulus != 0 && modulus < 9) {
 		return (bytes - modulus + 8);
 	}
-	return (bytes - modulus + 24);
+	return (bytes - modulus + 16);
 }
 
 /*
