@@ -144,7 +144,10 @@ static inline uint32_t blocksFromBytes (uint32_t bytes) {
 	// The remainder of the requested space must be equal to 8 bytes because of the positioning of
 	// the footer and proceding header to reach the next payload
 	uint32_t modulus = bytes % 16;
-	(modulus != 0 && modulus < 9) ? (return (bytes - modulus + 8)) : (return (bytes - modulus + 24));
+	if(modulus != 0 && modulus < 9) {
+		return (bytes - modulus + 8);
+	}
+	return (bytes - modulus + 24);
 }
 
 /*
