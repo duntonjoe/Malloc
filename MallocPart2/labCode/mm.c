@@ -75,18 +75,20 @@ static inline address* prevPtr (address base){
 	return (address*)base + 1;
 }
 
-static inline void addNode(address p){
+/* Adds a node to the free list */
+static inline void addNode(address bp){
 	address prev = free_list_head;
 	address next = *nextPtr(prev);
-	*nextPtr(p) = next;
-	*prevPtr(p) = prev;
-	*prevPtr(next) = p;
-	*nextPtr(prev) = p;
+	*nextPtr(bp) = next;
+	*prevPtr(bp) = prev;
+	*prevPtr(next) = bp;
+	*nextPtr(prev) = bp;
 }
 
-static inline void removeNode (address p){
-	*nextPtr(*prevPtr(p)) = *nextPtr(p);
-	*prevPtr(*nextPtr(p)) = *prevPtr(p);
+/* Removes a node from the free list */
+static inline void removeNode (address bp){
+	*nextPtr(*prevPtr(bp)) = *nextPtr(bp);
+	*prevPtr(*nextPtr(bp)) = *prevPtr(bp);
 }
 
 /*basePtr, size, allocated */
@@ -95,6 +97,10 @@ static inline address makeBlock (address bp, uint32_t size, bool allocated) {
 	*footer(bp) = (tag) (size + OVERHEAD) | allocated;
 	*((address*)header(bp) + sizeof(tag))         = nextBlock(bp);
 	*((address*)header(bp) + sizeof(tag) + WSIZE) = prevBlock(bp);
+	if (!allocated) {
+		
+	}
+
 	return bp;
 }
 
@@ -102,29 +108,6 @@ static inline address makeBlock (address bp, uint32_t size, bool allocated) {
 static inline void toggleBlock (address bp){
 	*header(bp) ^= 1;
 	*footer(bp) ^= 1;
-}
-
-/* 
- * removeBlock - removes a block from the free list 
- */
-static inline void removeBlock(address bp){
-	if(prevPtr(bp)){
-		*((address*)prevBlock(bp) - OVERHEAD) = nextBlock(bp);
-	}
-	else {
-		free_list_head = *nextPtr(bp);
-	}
-	*((address*)nextBlock(bp) - OVERHEAD) = prevBlock(bp);
-}
-
-/* 
- * insertBlock - inserts a block into the free list 
- */
-static inline void insertBlock(address bp){
-	*((address*)header(bp) + 1) = free_list_head;
-	*((address*)header(bp) + 1) = NULL;
-	*((address*)header(free_list_head) + 2) = bp;
-	free_list_head = bp;
 }
 
 /*
@@ -145,7 +128,6 @@ static inline address coalesce(address bp)
 	}
 	*header(bp) = size | false;
 	*footer(bp) = size | false;
-	addNode(bp);
 	return makeBlock(bp, size, false);
 }
 
@@ -156,11 +138,7 @@ static inline address coalesce(address bp)
 static inline uint32_t blocksFromBytes (uint32_t bytes) {
 	// The remainder of the requested space must be equal to 8 bytes because of the positioning of
 	// the footer and proceding header to reach the next payload
-	uint32_t modulus = bytes % 16;
-	if(modulus != 0 && modulus < 9) {
-		return (bytes - modulus + 8);
-	}
-	return (bytes - modulus + 16);
+	return (uint32_t) ((bytes + 2*sizeof(tag) + DSIZE - 1) / DSIZE )* 2; 
 }
 
 /*
@@ -175,7 +153,6 @@ static inline address extend_heap(uint32_t words)
 		return NULL;
 	/* Initialize free block header/footer and the epilogue header */
 	makeBlock (bp, words, false); 
-	addNode(bp);
 	*header (nextBlock (bp)) = 0 | true;
 	/* Coalesce if the previous block was free */
 	return coalesce (bp);
