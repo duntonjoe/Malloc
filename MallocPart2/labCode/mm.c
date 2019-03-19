@@ -1,3 +1,5 @@
+// Brought to you by Joe Dunton and James Leo Roche IV 
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +22,9 @@ typedef uint32_t tag;
 typedef uint8_t byte;
 typedef byte* address;
 
+
+// We set this up to represent the start of the heap but also
+// as a way to grab the dummy header of our free list
 static address free_list_head;
 
 
@@ -187,10 +192,15 @@ mm_init (void)
 	//create the initial heap	
 	if ((heap_head = mem_sbrk(6*WSIZE)) == (void *)-1)
 		return -1;
-
+	// setuo a buffer
 	free_list_head = heap_head + 2 * WSIZE;
+	// we make a dummy header and store it between a dummy header and footer of size
+	// 4 with allocation. We set it this way so that we don't have to worry about the
+	// head of the heap ever being overwritten with a payload.
 	makeBlock(free_list_head, 4, true);
+	// Set the epilogue header. 
 	*header(nextBlock(free_list_head)) = 0 | 1;
+	// Setup the doubly linked list which points to itself.
 	*prevPtr(free_list_head) = free_list_head;
 	*nextPtr(free_list_head) = free_list_head;
 	/*
@@ -214,6 +224,9 @@ mm_malloc (uint32_t size)
 	return bp;
 }
 
+/* We need to add the node to the freed block in this
+   implementation to make sure our list contains everything
+   that's been freed. */
 void
 mm_free (void *ptr)
 {
@@ -266,6 +279,11 @@ int mm_check(void)
 			return 0;
 		// The two in a row are not allocated, you missed a coalesce
 		if (!isAllocated(header(blockptr)) && !isAllocated(nextHeader(blockptr)))
+			return 0;
+	}
+	// Checks to see if all the items on the free list are actually free.
+	for(address ptr = nextPtr(free_list_head); ptr != free_list_head; ptr = nextPtr(ptr)) {
+		if (isAllocated(header(ptr)))
 			return 0;
 	}
 	return 1;
