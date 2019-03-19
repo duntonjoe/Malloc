@@ -265,7 +265,7 @@ int mm_check(void)
 		if (sizeOf(header(blockptr)) != sizeOf(footer(blockptr)))
 			return 0;
 		// The two in a row are not allocated, you missed a coalesce
-		if (!isAllocated(header(blockptr)) && !isAllocated(nextHeader(header(blockptr))))
+		if (!isAllocated(header(blockptr)) && !isAllocated(nextHeader(blockptr)))
 			return 0;
 	}
 	return 1;
