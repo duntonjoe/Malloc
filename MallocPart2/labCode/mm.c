@@ -282,7 +282,7 @@ int mm_check(void)
 			return 0;
 	}
 	// Checks to see if all the items on the free list are actually free.
-	for(address ptr = nextPtr(free_list_head); ptr != free_list_head; ptr = nextPtr(ptr)) {
+	for(address ptr = *nextPtr(free_list_head); ptr != free_list_head; ptr = *nextPtr(ptr)) {
 		if (isAllocated(header(ptr)))
 			return 0;
 	}
