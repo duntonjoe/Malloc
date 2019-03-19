@@ -13,66 +13,56 @@
 #define DSIZE 16
 #define OVERHEAD (2 * sizeof(word))
 #define CHUNKSIZE (1<<24)
+#define MIN_BLOCK_SIZE 4
 
 typedef uint64_t word;
 typedef uint32_t tag;
 typedef uint8_t byte;
 typedef byte* address;
 
-static address heap_head;
 static address free_list_head;
 
 
 static inline address find_fit (uint32_t blkSize);
 
-/* returns HDR address given basePtr */
-static inline tag* header (address bp){
-	return (tag*)bp - 1;
+static inline uint32_t sizeOf (tag* base) {
+  return *base & (uint32_t)-2;
 }
 
-/* return true IFF block is allocated */
-static inline bool isAllocated (tag* targetBlockAddr){
-	return *targetBlockAddr & 0x1;
+static inline bool isAllocated (tag* base) {
+  return *base & (uint32_t)1;
 }
 
-/* returns size of block (words) */
-static inline tag sizeOf (tag* targetBlockAddr){
-	return *targetBlockAddr & (tag)-2;
+static inline tag* header (address base) {
+  return (tag*)base - 1;
 }
 
-/* returns FTR address given basePtr */
-static inline tag* footer (address bp) {
-	return (tag*)(bp + WSIZE*sizeOf(header(bp)) - WSIZE);
+static inline tag* footer (address base) {
+  return (tag*)(base + sizeOf (header (base)) * sizeof (word) - 2 * sizeof (tag));
 }
 
-/* gives the basePtr of next block */
-static inline address nextBlock (address bp){
-	return bp + WSIZE * sizeOf(header(bp));
+static inline address nextBlock (address base) {
+  return base + sizeOf (header(base)) * sizeof (word);
 }
 
-/*returns the previous block's footer */
-static inline tag* prevFooter (address base){
-	return header(base) - 1;
+static inline tag* prevFooter (address base) {
+  return header(base) - 1;
 }
 
-/* gives the basePtr of prev block */
-static inline address prevBlock (address bp){
-	return (address) ((prevFooter(bp) - sizeOf(prevFooter(bp))) + (2 * WSIZE)); 
+static inline tag* nextHeader (address base) {
+  return footer(base) + 1;
 }
 
-/*returns the next block's header */
-static inline tag* nextHeader (address base){
-	return footer(base) + 1;
+static inline address prevBlock (address base) {
+  return base - sizeOf (prevFooter (base)) * sizeof(word);
 }
 
-/*returns next pointer of a block */
-static inline address* nextPtr (address base){
-	return (address*)base;
+static inline address* nextPtr (address base) {
+  return (address*)base;
 }
 
-/*returns prev pointer of a block */
-static inline address* prevPtr (address base){
-	return (address*)base + 1;
+static inline address* prevPtr (address base) {
+  return (address*)base + 1;
 }
 
 /* Adds a node to the free list */
@@ -93,14 +83,11 @@ static inline void removeNode (address bp){
 
 /*basePtr, size, allocated */
 static inline address makeBlock (address bp, uint32_t size, bool allocated) {
-	*header(bp) = (tag) (size + OVERHEAD) | allocated;
-	*footer(bp) = (tag) (size + OVERHEAD) | allocated;
-	*((address*)header(bp) + sizeof(tag))         = nextBlock(bp);
-	*((address*)header(bp) + sizeof(tag) + WSIZE) = prevBlock(bp);
+	*header(bp) = size | allocated;
+	*footer(bp) = size | allocated;
 	if (!allocated) {
-		
+		addNode (bp);
 	}
-
 	return bp;
 }
 
@@ -116,19 +103,21 @@ static inline void toggleBlock (address bp){
 static inline address coalesce(address bp)
 {
 	uint32_t size = sizeOf(header(bp));
-
+	address base = bp;
 	if (!isAllocated(nextHeader(bp))) {
 		size += sizeOf(nextHeader(bp));
 		removeNode(nextBlock(bp));
 	}
 	if (!isAllocated(prevFooter(bp))) {
-		size += sizeOf(header(bp));
-		bp = prevBlock(bp);
+		size += sizeOf(prevFooter(bp));
 		removeNode(prevBlock(bp));
+		base = prevBlock(bp);
 	}
-	*header(bp) = size | false;
-	*footer(bp) = size | false;
-	return makeBlock(bp, size, false);
+	if (size != sizeOf(header(bp))) {
+		removeNode(bp);
+		makeBlock(base, size, false);
+	}
+	return base;
 }
 
 /*
@@ -138,7 +127,10 @@ static inline address coalesce(address bp)
 static inline uint32_t blocksFromBytes (uint32_t bytes) {
 	// The remainder of the requested space must be equal to 8 bytes because of the positioning of
 	// the footer and proceding header to reach the next payload
-	return (uint32_t) ((bytes + 2*sizeof(tag) + DSIZE - 1) / DSIZE )* 2; 
+	uint32_t size = (uint32_t) ((bytes + 2*sizeof(tag) + DSIZE - 1) / DSIZE )* 2;
+	if (size < MIN_BLOCK_SIZE)
+		return MIN_BLOCK_SIZE;
+	return size;
 }
 
 /*
@@ -164,7 +156,8 @@ static inline address extend_heap(uint32_t words)
 static inline address place(address bp, uint32_t asize)
 {
 	uint32_t csize = sizeOf(header(bp));
-	if (csize - asize >= 2) {
+	removeNode (bp);
+	if (csize - asize >= MIN_BLOCK_SIZE) {
 		makeBlock (bp, asize, true);
 		makeBlock (nextBlock (bp), csize - asize, false);
 	} else {
@@ -177,9 +170,9 @@ static inline address place(address bp, uint32_t asize)
  *Find_fit - finds first available spot where a new block could fit
  */
 static inline address find_fit (uint32_t blkSize) {
-	for(address blockPtr = free_list_head; sizeOf(nextHeader((blockPtr))) != 0; blockPtr = nextBlock(blockPtr))
+	for(address blockPtr = *nextPtr(free_list_head); blockPtr != free_list_head; blockPtr = *nextPtr(blockPtr))
 	{
-		if(!isAllocated(header(blockPtr)) && sizeOf(header(blockPtr)) >= blkSize)
+		if(sizeOf(header(blockPtr)) >= blkSize)
 		{
 			return blockPtr;
 		}
@@ -190,16 +183,16 @@ static inline address find_fit (uint32_t blkSize) {
 int
 mm_init (void)
 {
+	address heap_head;
 	//create the initial heap	
 	if ((heap_head = mem_sbrk(6*WSIZE)) == (void *)-1)
 		return -1;
 
-	heap_head += 2 * WSIZE;
-	makeBlock(heap_head, 4, true);
-	*header(nextBlock(heap_head)) = 0 | 1;
-	free_list_head = heap_head;
-	*prevPtr(heap_head) = heap_head;
-	*nextPtr(heap_head) = heap_head;	
+	free_list_head = heap_head + 2 * WSIZE;
+	makeBlock(free_list_head, 4, true);
+	*header(nextBlock(free_list_head)) = 0 | 1;
+	*prevPtr(free_list_head) = free_list_head;
+	*nextPtr(free_list_head) = free_list_head;
 	/*
 	 * Extend heap by 1 block of chunksize bytes.
 	 * Chunksize is equal to 3 words of space, as this accounts for the overhead of a header and footer word.
@@ -215,10 +208,9 @@ mm_malloc (uint32_t size)
 	}
 	uint32_t asize = blocksFromBytes(size);
 	address bp = find_fit(asize);
-	if (bp == NULL) {
-		return NULL;
+	if (bp != NULL) {
+		place(bp, asize);
 	}
-	place(bp, asize);
 	return bp;
 }
 
@@ -262,13 +254,19 @@ mm_realloc (void *ptr, uint32_t size)
 
 int mm_check(void)
 {
-	for (address blockptr = heap_head; sizeOf(header(blockptr)) != 0; blockptr = nextBlock(blockptr)) {
-		if (!isAllocated(header(blockptr))) {
-			if (!isAllocated(header(nextBlock(blockptr)))) {
-				// If it reaches this point, it's missed a coalesce.
-				return 0;
-			}
-		}      
+	// Heap head isn't set properly
+	if (free_list_head == NULL)
+		return 0;
+	for (address blockptr = free_list_head; sizeOf(header(blockptr)) != 0; blockptr = nextBlock(blockptr)) {
+		// The header and fooder have different allocation bits
+		if (!isAllocated(header(blockptr)) != !isAllocated(footer(blockptr)))
+			return 0;
+		// The header and footer have different sizes
+		if (sizeOf(header(blockptr)) != sizeOf(footer(blockptr)))
+			return 0;
+		// The two in a row are not allocated, you missed a coalesce
+		if (!isAllocated(header(blockptr)) && !isAllocated(nextHeader(header(blockptr))))
+			return 0;
 	}
 	return 1;
 }
